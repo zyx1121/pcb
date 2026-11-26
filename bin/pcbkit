@@ -1,15 +1,56 @@
 #!/usr/bin/env bash
 # Run pcbkit inside the pinned KiCad image, with the current folder mounted as the project.
-#   bin/pcbkit gate            (from the folder that holds pcb.toml)
+#   bin/pcbkit gate                         (from the folder that holds pcb.toml)
+#   bin/pcbkit freeroute IN.dsn OUT.ses [freerouting options]
 # PCBKIT_IMAGE overrides the image; DOCKER overrides the docker command (e.g. "sudo -n docker").
 # Inside a KiCad container already (CI), it runs python3 -m pcbkit directly.
 set -euo pipefail
 IMAGE="${PCBKIT_IMAGE:-kicad/kicad:10.0.8}"
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../kit" && pwd)"
-if python3 -c "import pcbnew" 2>/dev/null; then
-  PYTHONPATH="$KIT${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m pcbkit "$@"
-fi
+CACHE="${PCBKIT_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/pcbkit}"
 DOCKER="${DOCKER:-docker}"
+
+# Pinned third-party tools, downloaded once and checked.
+HAPPY_SHA=6b9767e19979cdef91631573753b1547efdbeab9          # aklofas/kicad-happy 3.0.2 (MIT)
+FR_VERSION=2.6.0                                             # freerouting/freerouting (GPL-3.0)
+FR_SHA256=a2929fe37767a71d119f52ac99a1615a9aa2b0538742fa514ddafd72a7785729
+JAVA_IMAGE=eclipse-temurin:25-jre                            # Freerouting 2.6 needs Java 25
+
+fetch_happy() {
+  local dir="$CACHE/kicad-happy-$HAPPY_SHA"
+  if [ ! -f "$dir/skills/kicad/scripts/analyze_pcb.py" ]; then
+    mkdir -p "$dir"
+    curl -fsSL "https://codeload.github.com/aklofas/kicad-happy/tar.gz/$HAPPY_SHA" | tar -xz -C "$dir" --strip-components=1 \
+      || { echo "pcbkit: could not download kicad-happy; the happy advice is skipped" >&2; rm -rf "$dir"; return 0; }
+  fi
+  echo "$dir"
+}
+
+fetch_freerouting() {
+  local jar="$CACHE/freerouting-$FR_VERSION.jar"
+  if [ ! -f "$jar" ]; then
+    mkdir -p "$CACHE"
+    curl -fsSL -o "$jar.part" "https://github.com/freerouting/freerouting/releases/download/v$FR_VERSION/freerouting-$FR_VERSION.jar"
+    echo "$FR_SHA256  $jar.part" | sha256sum -c --quiet - || { rm -f "$jar.part"; echo "pcbkit: Freerouting checksum mismatch" >&2; exit 1; }
+    mv "$jar.part" "$jar"
+  fi
+  echo "$jar"
+}
+
+if [ "${1:-}" = "freeroute" ]; then
+  [ $# -ge 3 ] || { echo "usage: pcbkit freeroute IN.dsn OUT.ses [freerouting options]" >&2; exit 2; }
+  in="$2"; out="$3"; shift 3
+  jar="$(fetch_freerouting)"
+  $DOCKER image inspect "$JAVA_IMAGE" >/dev/null 2>&1 || $DOCKER pull -q "$JAVA_IMAGE" >/dev/null
+  exec $DOCKER run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$jar":/fr.jar:ro -v "$PWD":/w -w /w "$JAVA_IMAGE" \
+    java -jar /fr.jar -de "$in" -do "$out" --gui.enabled=false "$@"
+fi
+
+HAPPY="$(fetch_happy)"
+if python3 -c "import pcbnew" 2>/dev/null; then
+  PCBKIT_HAPPY="$HAPPY" PYTHONPATH="$KIT${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m pcbkit "$@"
+fi
 $DOCKER image inspect "$IMAGE" >/dev/null 2>&1 || $DOCKER pull -q "$IMAGE" >/dev/null
-exec $DOCKER run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e PYTHONPATH=/pcbkit -e PYTHONUTF8=1 \
+mount=(); [ -n "$HAPPY" ] && mount=(-v "$HAPPY":/happy:ro -e PCBKIT_HAPPY=/happy)
+exec $DOCKER run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e PYTHONPATH=/pcbkit -e PYTHONUTF8=1 "${mount[@]}" \
   -v "$KIT":/pcbkit:ro -v "$PWD":/w -w /w "$IMAGE" python3 -m pcbkit "$@" 2> >(grep -v "image handler" >&2)

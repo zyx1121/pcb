@@ -24,4 +24,4 @@ group, item, value, limit, verdict (pass | FAIL | open), source (datasheet + pag
 
 Read the numbers from the part's own datasheet, not from a similar part.
 
-kicad-happy (github.com/aklofas/kicad-happy, MIT) is a useful second opinion: `analyze_schematic.py` and `analyze_pcb.py` run offline and flag missing decoupling, power-tree problems and missing fiducials. Treat its output as a list to read, not a gate: on a 141-part board it raised 128 findings, most of them noise.
+kicad-happy (github.com/aklofas/kicad-happy, MIT) runs as the `happy` advice of `bin/pcbkit gate`: offline analyzers that flag missing decoupling, power-tree problems, fiducials and thermal vias. It is a list to read, not a gate: on a 141-part board it raised 15 errors and warnings, about half of them false (an open-collector driver read as a domain crossing). Waive those with the reason.

@@ -39,6 +39,7 @@ class Config:
     quantity: int = 2
     passives_basic: bool = True
     gates: list[str] = field(default_factory=lambda: ["rules", "drc", "parity", "route"])
+    advise: list[str] = field(default_factory=lambda: ["druid", "happy"])
     commands: list[Command] = field(default_factory=list)
     waivers: list[Waiver] = field(default_factory=list)
 
@@ -74,6 +75,7 @@ def load(path: str | Path = "pcb.toml") -> Config:
         quantity=int(jlc.get("quantity", 2)),
         passives_basic=bool(jlc.get("passives_basic", True)),
         gates=gate.get("run", ["rules", "drc", "parity", "route"]),
+        advise=gate.get("advise", ["druid", "happy"]),
         commands=[Command(c["name"], c["run"]) for c in gate.get("command", [])],
         waivers=[Waiver(w["gate"], w.get("match", ""), w["reason"]) for w in data.get("waive", [])],
     )

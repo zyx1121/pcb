@@ -33,7 +33,8 @@ Every entry below cost a board revision or a day. Read before writing pcbnew cod
 
 ## Freerouting
 
-- Freerouting 2.5 and 2.6 jars need Java 25. Run them in `eclipse-temurin:25-jre` when the host has an older Java.
+- Use Freerouting 2.6.0 through `bin/pcbkit freeroute`; it pins the jar by checksum and runs it in `eclipse-temurin:25-jre` (2.5 and 2.6 need Java 25).
+- `--router.via_costs` does nothing since 2.5 (the log says "Unknown settings property"); drop it.
 - A rule area that only blocks zones is exported to the DSN as a keepout that blocks tracks too. Route those pads by hand.
 - A hand-routed track must end on a pad centre, a via or another track, or Freerouting counts the net as unrouted and skips optimisation.
 - Reserve an inner GND layer with `(autoroute_settings (layer_rule In1.Cu (active off)))` before `(boundary` in the DSN.

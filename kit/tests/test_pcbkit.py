@@ -76,6 +76,7 @@ class Config(unittest.TestCase):
         cfg = config.load(p)
         self.assertEqual(cfg.rules, tmp / "b.kicad_dru")
         self.assertEqual(cfg.gates, ["rules", "drc", "parity", "route"])
+        self.assertEqual(cfg.advise, ["druid", "happy"])
         self.assertIsNotNone(cfg.waived("route", "short /USB_DP 1 2 0.1 mm"))
         self.assertIsNone(cfg.waived("drc", "short /USB_DP"))
 
@@ -141,6 +142,15 @@ class Sentinel(unittest.TestCase):
                 text = f'(version 1)\n(rule "c"\n  (constraint {c} (min 0.1mm)))\n'
                 ok, _ = rules.sentinel(self.pcb, write(self.tmp, "c.kicad_dru", text))
                 self.assertTrue(ok, c)
+
+    def test_vendored_druid_rules_load(self):
+        from pcbkit.advice import VENDOR
+
+        for f in sorted(VENDOR.glob("*.kicad_dru")):
+            with self.subTest(f.name):
+                self.assertEqual(rules.lint(f), [])
+                ok, _ = rules.sentinel(self.pcb, f)
+                self.assertTrue(ok, f.name)
 
     def test_broken_files_are_dropped(self):
         for name, text in BROKEN.items():

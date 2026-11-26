@@ -27,6 +27,7 @@ passives_basic = true                   # fail on a resistor or capacitor that i
 
 [gate]
 run = ["rules", "drc", "parity", "route", "jlc"]
+advise = ["druid", "happy"]                 # never fail the gate; the default
 
 [[gate.command]]                        # a project check; fails on a non-zero exit
 name = "positive-control"
@@ -47,6 +48,7 @@ bin/pcbkit jlc              the BOM against JLCPCB's library
 bin/pcbkit datasheets       every BOM part's datasheet into datasheets/
 bin/pcbkit lint-rules F     lint a .kicad_dru (no KiCad needed)
 bin/pcbkit search 10k 0603  search JLCPCB's parts
+bin/pcbkit freeroute in.dsn out.ses [options]   Freerouting 2.6.0 in a Java 25 container
 ```
 
 Set `DOCKER="sudo -n docker"` when the user is not in the docker group. Inside a KiCad container (CI), `bin/pcbkit` runs Python directly.
