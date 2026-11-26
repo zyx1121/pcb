@@ -23,7 +23,7 @@ Do the steps in this order. A later step never starts on a guess about an earlie
 3. **Schematic.** Generate it from a script, run ERC, export the netlist, check pins against a pin table you wrote from the datasheets.
 4. **Calculations.** Derating, power, ripple, voltage domains, relay coils, creepage. One row per check: item, value, limit, verdict, source page. A claim like "enough" or "safe" needs its row. See [references/checks.md](references/checks.md).
 5. **Placement proposal.** Write the zones, signal directions and connector sides first. Make 2 to 4 candidates, including a different overall direction. Measure each with the same script (route length, crossings, gaps) and render them side by side. The person picks; do not route before that.
-6. **Routing.** Route mains, power and sensitive nets by script or hand. Autoroute the rest with Freerouting, then clean up (finish, tidy short jogs, teardrops). See [references/kicad.md](references/kicad.md).
+6. **Routing.** Route mains, power and sensitive nets by script or hand. Autoroute the rest with `bin/pcbkit freeroute in.dsn out.ses` (Freerouting 2.6.0, pinned and checksummed), then clean up (finish, tidy short jogs, teardrops). See [references/kicad.md](references/kicad.md).
 7. **Gates.** `bin/pcbkit gate`. Every gate is judged by what it found, never by a printed summary. A finding is fixed or waived in `pcb.toml` with a reason; nothing is skipped.
 8. **Order.** `bin/pcbkit fab`, then check the CPL in JLCPCB's placement preview part by part, then a two-model review of the whole package. Present the quote options to the person; ordering is their decision.
 9. **Bring-up.** Test the board alone on USB or a bench supply before it touches the machine.
@@ -49,6 +49,8 @@ Do the steps in this order. A later step never starts on a guess about an earlie
 | `parity` | any reference, footprint, pad net or value that differs from the netlist |
 | `route` | right-angle bends away from pads, and segments shorter than `short_mm` |
 | `jlc` | a part without an LCSC number, not in the library, short of stock, or a non-Basic passive |
+
+Then two advice lists that never fail the gate, to read and act on: `druid` (kicad-druid's JLCPCB rules for the layer count) and `happy` (kicad-happy's schematic and board analyzers: decoupling, power tree, fiducials, thermal vias). Fix what is real; waive what is not, with the reason.
 
 Project commands in `[[gate.command]]` (positive-control board, creepage, calculations) fail on a non-zero exit. Write project checks so they exit non-zero on a finding.
 

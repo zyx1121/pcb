@@ -8,6 +8,9 @@ Built-in gates:
   jlc     the BOM against JLCPCB's library (network)
 Project commands ([[gate.command]]) fail on a non-zero exit.
 
+Advice ([gate] advise, default druid and happy; see advice.py) runs last and never fails the gate: it lists
+what kicad-druid and kicad-happy would change. Waive a false one like any finding, under the advice's name.
+
 A [[waive]] entry with the gate's name and a substring of one finding turns that finding into a note; the
 reason is printed every run. A waiver that matches nothing is reported, so stale waivers do not pile up.
 """
@@ -17,6 +20,7 @@ import subprocess
 from pathlib import Path
 
 from . import jlc, kicad, parity, route, rules
+from .advice import ADVICE
 from .config import Config
 
 
@@ -97,6 +101,21 @@ def run(cfg: Config, only: list[str] | None = None) -> int:
             print(f"      . {line}")
         if kept:
             failed.append(name)
+    for name in [a for a in cfg.advise if not only or a in only]:
+        try:
+            found = ADVICE[name](cfg)
+        except Exception as e:  # advice that crashes is reported, not fatal
+            found = [f"crashed: {type(e).__name__}: {e}"]
+        kept = []
+        for line in found:
+            w = cfg.waived(name, line)
+            if w:
+                used.add(id(w))
+            else:
+                kept.append(line)
+        print(f"ADVICE {name}: {len(kept)} to read" + (f", {len(found) - len(kept)} waived" if len(found) > len(kept) else ""))
+        for line in kept[:30]:
+            print(f"      {line}")
     for w in cfg.waivers:
         if id(w) not in used and (not only or w.gate in only):
             print(f"      stale waiver: [{w.gate}] '{w.match}' matched nothing")

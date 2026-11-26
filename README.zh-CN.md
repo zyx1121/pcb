@@ -21,6 +21,7 @@ KiCad 10 的自定义规则文件只要错一处，就会整份被丢弃，而�
 - **走线 lint**：直角转弯与自动布线留下的短线段。
 - **JLCPCB 生产文件**：Gerber zip、BOM、CPL(含旋转修正)；BOM 对 JLCPCB 实时料库查基础件与库存。
 - **先读规格书**：MCP 查料并保存规格书 PDF。
+- **第二意见**：kicad-druid 的 JLCPCB 规则与 kicad-happy 的分析在关卡后列出建议，不会让关卡失败。
 - **每块板一份配置**：`pcb.toml` 存项目选择与例外，每个例外都写原因。
 
 ## 快速开始
@@ -40,6 +41,7 @@ MCP server 需要 Bun。`bin/pcbkit` 需要 Linux 上的 Docker。在板子旁�
 | `bin/pcbkit fab` | 生成 Gerber zip、`bom-jlc.csv`、`cpl-jlc.csv` |
 | `bin/pcbkit jlc` | BOM 对 JLCPCB 料库 |
 | `bin/pcbkit datasheets` | 下载 BOM 每颗料的规格书 |
+| `bin/pcbkit freeroute IN OUT` | 用 Freerouting 2.6.0 自动布线(固定版本、校验 checksum) |
 | MCP `jlc_search`、`jlc_part`、`datasheet_fetch` | 查料、查料号、存规格书 |
 
 ## 许可

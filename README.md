@@ -34,6 +34,7 @@ KiCad 10 drops a custom rules file with a single mistake and says nothing: DRC p
 - **Route lint**: right-angle bends and autorouter jogs that DRC cannot tell from a T junction.
 - **JLCPCB ready**: Gerber zip, BOM and CPL with rotation fixes and through-hole centres; the BOM checked against JLCPCB's live library (Basic or Extended, stock).
 - **Datasheets first**: MCP tools search parts and save each datasheet PDF, so values come from a page, not memory.
+- **Second opinions**: kicad-druid's JLCPCB rules and kicad-happy's analyzers run as advice after the gates, listed but never failing.
 - **One config per board**: `pcb.toml` holds the project's choices and waivers, each with a reason.
 
 ## Quick start
@@ -56,6 +57,7 @@ The MCP server needs Bun. `bin/pcbkit` needs Docker on a Linux host. Put a `pcb.
 | `bin/pcbkit jlc` | checks the BOM against JLCPCB's library |
 | `bin/pcbkit datasheets` | saves every BOM part's datasheet into `datasheets/` |
 | `bin/pcbkit lint-rules FILE` | lints a `.kicad_dru` without KiCad |
+| `bin/pcbkit freeroute IN OUT` | autoroutes a DSN with Freerouting 2.6.0 (pinned, checksummed) |
 | MCP `jlc_search` | searches JLCPCB's parts by keyword or value |
 | MCP `jlc_part` | looks up LCSC codes: kind, stock, package, prices |
 | MCP `datasheet_fetch` | saves one part's datasheet PDF |
@@ -103,6 +105,12 @@ bun install --frozen-lockfile
 bun run check
 docker run --rm -e PYTHONPATH=/k -v "$PWD/kit:/k:ro" -w /k kicad/kicad:10.0.8 python3 -m unittest discover -s tests
 ```
+
+## Credits
+
+- [kicad-druid](https://github.com/Cimos/kicad-druid) (MIT): the JLCPCB rules files in `kit/pcbkit/vendor/kicad-druid/`.
+- [kicad-happy](https://github.com/aklofas/kicad-happy) (MIT): downloaded at a pinned commit for the `happy` advice.
+- [Freerouting](https://github.com/freerouting/freerouting) (GPL-3.0): downloaded at a pinned version and checksum, not bundled.
 
 ## License
 
