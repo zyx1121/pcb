@@ -15,6 +15,7 @@ Every entry below cost a board revision or a day. Read before writing pcbnew cod
   - `A.Parent.Reference`; use `A.memberOfFootprint('U1')`
   - an unknown constraint name
   - a text variable `${...}`
+  - no `(version 1)` header
 - A rule that never matches still loads: `A.Type == 'pad'` (lowercase) is always false; write `'Pad'`.
 - KiCad applies the last matching rule. An unconditional clearance rule after the net-class rules overrides all of them, and zones pull back by it too. Put the board-wide rule first, then one rule per class, then the strictest (mains) last.
 - Prove each rule fires: a positive-control board with one deliberate violation per rule, checked by rule name in the DRC JSON.

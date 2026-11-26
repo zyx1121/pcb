@@ -21,12 +21,12 @@ from pathlib import Path
 
 from . import kicad
 
-# KiCad 10 custom rule constraints (docs.kicad.org/10.0/en/pcbnew/pcbnew.html#custom-design-rules)
+# KiCad 10 custom rule constraints: the docs list plus the keywords found in libkicommon.so 10.0.8
 CONSTRAINTS = {
     "annular_width", "assertion", "bridged_mask", "clearance", "connection_width", "courtyard_clearance",
     "creepage", "diff_pair_gap", "diff_pair_uncoupled", "disallow", "edge_clearance", "hole_clearance",
-    "hole_size", "hole_to_hole", "length", "min_resolved_spokes", "physical_clearance",
-    "physical_hole_clearance", "silk_clearance", "skew", "solder_mask_expansion", "solder_paste_abs_margin",
+    "hole_size", "hole_to_hole", "length", "mechanical_clearance", "mechanical_hole_clearance", "min_resolved_spokes", "physical_clearance",
+    "physical_hole_clearance", "silk_clearance", "skew", "solder_mask_expansion", "solder_mask_sliver", "solder_paste_abs_margin",
     "solder_paste_rel_margin", "text_height", "text_thickness", "thermal_relief_gap", "thermal_spoke_width",
     "track_angle", "track_segment_length", "track_width", "via_count", "via_dangling", "via_diameter",
     "zone_connection",

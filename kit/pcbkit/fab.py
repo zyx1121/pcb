@@ -47,7 +47,8 @@ def parts(netlist: Path) -> dict[str, dict]:
     return out
 
 
-def cpl_rows(cfg: Config) -> list[list]:
+def cpl_rows(cfg: Config, unmatched: set[str] | None = None) -> list[list]:
+    """CPL rows. Footprint names that no [fab] rotate entry matched go into `unmatched`."""
     p = kicad.pcbnew()
     board = kicad.load(cfg.pcb)
     org = board.GetDesignSettings().GetAuxOrigin()
@@ -65,7 +66,11 @@ def cpl_rows(cfg: Config) -> list[list]:
                 ps = [q.GetPosition() for q in fp.Pads() if q.GetNumber() == pad]
                 rows.append([piece, sum(q.x for q in ps) / len(ps), sum(q.y for q in ps) / len(ps), side, rot % 360])
             continue
-        add = next((d for pat, d in table if pat.search(name)), 0)
+        add = next((d for pat, d in table if pat.search(name)), None)
+        if add is None:
+            add = 0
+            if unmatched is not None and len({q.GetNumber() for q in fp.Pads()}) > 2:
+                unmatched.add(name)  # two-pad parts look the same both ways round
         if fp.GetAttributes() & p.FP_THROUGH_HOLE:
             x, y = body_centre(p, fp)
         else:
@@ -122,7 +127,8 @@ def run(cfg: Config) -> list[str]:
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted(gerber.iterdir()):
             z.write(f, f.name)
-    cpl = cpl_rows(cfg)
+    unmatched: set[str] = set()
+    cpl = cpl_rows(cfg, unmatched)
     with open(out / "cpl-jlc.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
@@ -135,6 +141,8 @@ def run(cfg: Config) -> list[str]:
             w.writerow(["Comment", "Designator", "Footprint", "LCSC Part #"])
             w.writerows(rows)
         report.append(f"bom: {len(rows)} lines" + (f", no LCSC number: {'; '.join(missing)}" if missing else ""))
+    if unmatched:
+        report.append("rotation 0 added, no [fab] rotate entry (check these in JLCPCB's preview): " + ", ".join(sorted(unmatched)))
     if cfg.hand:
         report.append("by hand: " + ", ".join(cfg.hand))
     return report
