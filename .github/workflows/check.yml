@@ -1,0 +1,29 @@
+name: Check
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.5'
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: git diff --exit-code -- .claude-plugin/plugin.json .mcp.json dist/server.js
+  pcbkit:
+    runs-on: ubuntu-latest
+    container:
+      image: kicad/kicad:10.0.8
+      options: --user root
+    env:
+      PYTHONPATH: kit
+      HOME: /tmp
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s kit/tests -v
