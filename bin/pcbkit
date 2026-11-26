@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Run pcbkit inside the pinned KiCad image, with the current folder mounted as the project.
+#   bin/pcbkit gate            (from the folder that holds pcb.toml)
+# PCBKIT_IMAGE overrides the image; DOCKER overrides the docker command (e.g. "sudo -n docker").
+# Inside a KiCad container already (CI), it runs python3 -m pcbkit directly.
+set -euo pipefail
+IMAGE="${PCBKIT_IMAGE:-kicad/kicad:10.0.8}"
+KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../kit" && pwd)"
+if python3 -c "import pcbnew" 2>/dev/null; then
+  PYTHONPATH="$KIT${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m pcbkit "$@"
+fi
+DOCKER="${DOCKER:-docker}"
+$DOCKER image inspect "$IMAGE" >/dev/null 2>&1 || $DOCKER pull -q "$IMAGE" >/dev/null
+exec $DOCKER run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e PYTHONPATH=/pcbkit -e PYTHONUTF8=1 \
+  -v "$KIT":/pcbkit:ro -v "$PWD":/w -w /w "$IMAGE" python3 -m pcbkit "$@" 2> >(grep -v "image handler" >&2)

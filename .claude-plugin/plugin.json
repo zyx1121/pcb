@@ -1,0 +1,20 @@
+{
+  "name": "pcb",
+  "version": "0.1.0",
+  "description": "KiCad PCB flow for agents: a skill for the design order, headless gates in a pinned KiCad container, and JLCPCB part lookup through MCP.",
+  "author": {
+    "name": "zyx1121",
+    "url": "https://github.com/zyx1121"
+  },
+  "repository": "https://github.com/zyx1121/pcb",
+  "license": "MIT",
+  "keywords": [
+    "kicad",
+    "pcb",
+    "jlcpcb",
+    "drc",
+    "mcp",
+    "codex",
+    "claude-code"
+  ]
+}
