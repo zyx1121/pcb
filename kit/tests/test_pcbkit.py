@@ -24,6 +24,8 @@ BROKEN = {
     "deg unit": GOOD.replace("(min 89)", "(min 89deg)"),
     "parent": GOOD.replace("A.Type == 'Track'", "A.Parent.Reference == 'U1'"),
     "unknown constraint": GOOD.replace("edge_clearance", "edge_gap"),
+    "text variable": GOOD.replace("(min 0.3mm)", "(min ${EDGE})"),
+    "no version header": GOOD.replace("(version 1)\n", ""),
 }
 
 
@@ -129,6 +131,16 @@ class Sentinel(unittest.TestCase):
     def test_good_file_loads(self):
         ok, msg = rules.sentinel(self.pcb, write(self.tmp, "g.kicad_dru", GOOD))
         self.assertTrue(ok, msg)
+
+    def test_listed_constraints_load(self):
+        # names that are easy to get wrong: each must load on its own
+        for c in ["clearance", "hole_clearance", "hole_to_hole", "text_thickness", "track_width", "via_diameter",
+                  "mechanical_clearance", "mechanical_hole_clearance", "solder_mask_sliver"]:
+            with self.subTest(c):
+                self.assertIn(c, rules.CONSTRAINTS)
+                text = f'(version 1)\n(rule "c"\n  (constraint {c} (min 0.1mm)))\n'
+                ok, _ = rules.sentinel(self.pcb, write(self.tmp, "c.kicad_dru", text))
+                self.assertTrue(ok, c)
 
     def test_broken_files_are_dropped(self):
         for name, text in BROKEN.items():

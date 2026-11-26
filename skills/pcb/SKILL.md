@@ -10,6 +10,8 @@ A board is done when the gates pass and the person approved the placement, not w
 Tools in this plugin:
 
 - `bin/pcbkit` runs the checks inside the pinned KiCad image (`kicad/kicad:10.0.8`). Run it on a Linux host with Docker, from the folder that holds `pcb.toml`. See [references/pcb-toml.md](references/pcb-toml.md).
+  - It lives in this plugin's folder: `${CLAUDE_PLUGIN_ROOT}/bin/pcbkit`.
+  - When the board is on another host, clone the same release there and call that copy: `git clone https://github.com/zyx1121/pcb <dir>`, then `<dir>/bin/pcbkit gate` from the board folder. Only `bin/` and `kit/` are needed; it needs Docker and nothing else.
 - MCP tools `jlc_search`, `jlc_part`, `datasheet_fetch` query JLCPCB's parts library and save datasheets.
 
 ## Order
