@@ -54,11 +54,13 @@ def cpl_rows(cfg: Config, unmatched: set[str] | None = None) -> list[list]:
     board = kicad.load(cfg.pcb)
     org = board.GetDesignSettings().GetAuxOrigin()
     table = [(re.compile(a), d) for a, d in cfg.rotate]
-    lcsc = {r: d["lcsc"] for r, d in parts(cfg.netlist).items()} if cfg.netlist and cfg.netlist.exists() else {}
+    net = parts(cfg.netlist) if cfg.netlist and cfg.netlist.exists() else {}
+    lcsc = {r: d["lcsc"] for r, d in net.items()}
     rows = []
     for fp in sorted(board.GetFootprints(), key=lambda f: f.GetReference()):
         ref = fp.GetReference()
-        if ref in cfg.hand or fp.IsDNP() or fp.IsExcludedFromPosFiles() or fp.IsBoardOnly() or not fp.Pads():
+        if ref in cfg.hand or fp.IsDNP() or fp.IsExcludedFromPosFiles() or fp.IsBoardOnly() or not fp.Pads() \
+                or net.get(ref, {}).get("skip"):  # not fitted in the schematic: the BOM drops it, so must the CPL
             continue
         name = str(fp.GetFPID().GetLibItemName())
         rot = fp.GetOrientationDegrees()
