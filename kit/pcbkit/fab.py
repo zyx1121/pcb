@@ -54,11 +54,13 @@ def cpl_rows(cfg: Config, unmatched: set[str] | None = None) -> list[list]:
     board = kicad.load(cfg.pcb)
     org = board.GetDesignSettings().GetAuxOrigin()
     table = [(re.compile(a), d) for a, d in cfg.rotate]
-    lcsc = {r: d["lcsc"] for r, d in parts(cfg.netlist).items()} if cfg.netlist and cfg.netlist.exists() else {}
+    net = parts(cfg.netlist) if cfg.netlist and cfg.netlist.exists() else {}
+    lcsc = {r: d["lcsc"] for r, d in net.items()}
     rows = []
     for fp in sorted(board.GetFootprints(), key=lambda f: f.GetReference()):
         ref = fp.GetReference()
-        if ref in cfg.hand or fp.IsDNP() or fp.IsExcludedFromPosFiles() or fp.IsBoardOnly() or not fp.Pads():
+        if ref in cfg.hand or fp.IsDNP() or fp.IsExcludedFromPosFiles() or fp.IsBoardOnly() or not fp.Pads() \
+                or net.get(ref, {}).get("skip"):  # not fitted in the schematic: the BOM drops it, so must the CPL
             continue
         name = str(fp.GetFPID().GetLibItemName())
         rot = fp.GetOrientationDegrees()
@@ -100,9 +102,16 @@ def bom_rows(cfg: Config, placed: set[str]) -> tuple[list[list], list[str]]:
         pieces = [n for n, _ in cfg.split[ref]] if ref in cfg.split else [ref]
         pieces = [n for n in pieces if n in placed and ref not in cfg.hand and not part["skip"]]
         if pieces:
-            groups.setdefault((part["value"], part["footprint"], part["lcsc"]), []).extend(pieces)
+            # one line per LCSC number: JLCPCB merges two lines with the same number into one it leaves
+            # unselected, quantity 0 (2026-11-27, two buttons with different values)
+            g = (part["lcsc"], part["footprint"]) if part["lcsc"] else (part["value"], part["footprint"], "")
+            v, refs = groups.setdefault(g, ([], []))
+            if part["value"] not in v:
+                v.append(part["value"])
+            refs.extend(pieces)
     key = lambda r: (re.sub(r"\d", "", r), int(re.sub(r"\D", "", r) or 0))  # noqa: E731
-    rows = [[v, ",".join(sorted(refs, key=key)), fp, lcsc] for (v, fp, lcsc), refs in groups.items()]
+    rows = [["/".join(v), ",".join(sorted(refs, key=key)), g[1], g[0] if len(g) == 2 else ""]
+            for g, (v, refs) in groups.items()]
     rows.sort(key=lambda r: key(r[1].split(",")[0]))
     missing = [r[1] for r in rows if not r[3]]
     return rows, missing
