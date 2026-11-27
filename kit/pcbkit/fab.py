@@ -65,7 +65,12 @@ def local_pads(fp) -> dict[str, tuple[float, float]]:
     return out
 
 
-def cpl_rows(cfg: Config, unmatched: set[str] | None = None, log: list[dict] | None = None) -> list[list]:
+# Two-pad parts that go in one way only; a 180 degree error passes every pad-based check
+POLAR = re.compile(r"^(CP_|C_Elec|CP_Elec|D_|LED_|Diode_)")
+
+
+def cpl_rows(cfg: Config, unmatched: set[str] | None = None, log: list[dict] | None = None,
+             look: dict[str, set[str]] | None = None) -> list[list]:
     """CPL rows. Footprints with no [fab] rotate entry and no EasyEDA angle go into `unmatched`; `log` gets one
     entry per placed part: ref, side, the rotate entry's degrees (None without one) and EasyEDA's angle."""
     p = kicad.pcbnew()
@@ -103,6 +108,12 @@ def cpl_rows(cfg: Config, unmatched: set[str] | None = None, log: list[dict] | N
                 easy = None
         if log is not None:
             log.append({"ref": ref, "side": side, "rule": by_code, "easyeda": easy, "lcsc": code})
+        if look is not None:  # parts whose angle only JLCPCB's preview can confirm
+            numbers = {q.GetNumber() for q in fp.Pads() if q.GetNumber()}
+            if len(numbers) > 2 and easyeda.single_row(local_pads(fp)):
+                look.setdefault("facing", set()).add(ref)
+            elif len(numbers) == 2 and POLAR.search(name):
+                look.setdefault("polarity", set()).add(ref)
         # an entry for the LCSC number overrides, then the EasyEDA angle, then a footprint pattern
         add = next((a for a in (by_code, easy, by_name) if a is not None), None)
         if add is None:
@@ -190,7 +201,8 @@ def run(cfg: Config) -> list[str]:
         for f in sorted(gerber.iterdir()):
             z.write(f, f.name)
     unmatched: set[str] = set()
-    cpl = cpl_rows(cfg, unmatched)
+    look: dict[str, set[str]] = {}
+    cpl = cpl_rows(cfg, unmatched, look=look)
     with open(out / "cpl-jlc.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
@@ -205,6 +217,12 @@ def run(cfg: Config) -> list[str]:
         report.append(f"bom: {len(rows)} lines" + (f", no LCSC number: {'; '.join(missing)}" if missing else ""))
     if unmatched:
         report.append("rotation 0 added, no [fab] rotate entry and no EasyEDA footprint (check these in JLCPCB's preview): " + ", ".join(sorted(unmatched)))
+    if look.get("facing"):
+        report.append("single row, pin 1 cannot tell which way the body faces (check in JLCPCB's preview, then "
+                      "set the LCSC number in [fab] rotate): " + ", ".join(sorted(look["facing"])))
+    if look.get("polarity"):
+        report.append("polarized two-pad parts (check the + or cathode mark in JLCPCB's preview): "
+                      + ", ".join(sorted(look["polarity"])))
     if cfg.hand:
         report.append("by hand: " + ", ".join(cfg.hand))
     return report

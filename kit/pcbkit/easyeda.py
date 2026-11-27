@@ -48,10 +48,26 @@ def _pin1_angle(p: dict[str, tuple[float, float]]) -> float | None:
     return math.degrees(math.atan2(-y, x)) % 360  # counter-clockwise, y up
 
 
+def single_row(p: dict[str, tuple[float, float]]) -> bool:
+    """All pads on one line. Pin 1 then fixes the end, not the facing: a single-row header or terminal block
+    can carry its body on either side of the row, and two libraries may number it from opposite sides
+    (2026-11-27: a 5.08 mm terminal block matched pin 1 at 0 and still sat back to front in the preview)."""
+    pts = list(p.values())
+    if len(pts) < 3:
+        return True
+    (x0, y0), (x1, y1) = min(pts), max(pts)
+    dx, dy = x1 - x0, y1 - y0
+    n = math.hypot(dx, dy)
+    if n < 1e-9:
+        return True
+    return all(abs((x - x0) * dy - (y - y0) * dx) / n < 0.05 * n for x, y in pts)
+
+
 def offset(kicad: dict[str, tuple[float, float]], easy: dict[str, tuple[float, float]]) -> int | None:
-    """Degrees (0, 90, 180 or 270) to add to the KiCad rotation, or None when pin 1 cannot tell."""
+    """Degrees (0, 90, 180 or 270) to add to the KiCad rotation, or None when pin 1 cannot tell: fewer than
+    3 pads, pin 1 at the centre, or a single row (see `single_row`)."""
     keep = [n for n in kicad if n in easy]
-    if "1" not in keep or len(keep) < 3:
+    if "1" not in keep or len(keep) < 3 or single_row({n: kicad[n] for n in keep}):
         return None
     a = _pin1_angle({n: kicad[n] for n in keep})
     b = _pin1_angle({n: easy[n] for n in keep})

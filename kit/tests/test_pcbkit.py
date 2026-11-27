@@ -121,6 +121,15 @@ class EasyEda(unittest.TestCase):
         self.assertIn(easyeda.offset(k, turned), (90, 270))
         self.assertIsNone(easyeda.offset({"1": (0, 0), "2": (1, 0)}, {"1": (0, 0), "2": (1, 0)}))
 
+    def test_single_row_cannot_tell_the_facing(self):
+        from pcbkit import easyeda
+        row = {str(i + 1): (i * 5.08, 0.0) for i in range(9)}  # a 9-way terminal block
+        self.assertTrue(easyeda.single_row(row))
+        self.assertIsNone(easyeda.offset(row, row))
+        self.assertIsNone(easyeda.offset(row, {n: (-x, y) for n, (x, y) in row.items()}))
+        k = {"1": (-1.1, -0.95), "2": (-1.1, 0), "3": (-1.1, 0.95), "4": (1.1, 0.95), "5": (1.1, -0.95)}
+        self.assertFalse(easyeda.single_row(k))
+
 
 @unittest.skipUnless(HAS_KICAD, "needs the KiCad image")
 class Sentinel(unittest.TestCase):
