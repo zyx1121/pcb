@@ -4,8 +4,9 @@ Everything is measured from the board's aux origin (set it to the bottom-left co
 
 CPL, two differences from KiCad's position file:
 - Rotation: JLCPCB's 3D model of a part has its own zero, which can differ between parts in the same
-  package. So there is no built-in table: [fab] rotate lists footprint
-  name patterns and degrees counter-clockwise, each one checked in the placement preview on cart.jlcpcb.com.
+  package. So there is no built-in table: [fab] rotate lists patterns and degrees counter-clockwise, each one
+  checked in the placement preview on cart.jlcpcb.com. A pattern matches the footprint name or the part's
+  LCSC number ("^C7484$"); the first match wins, so list LCSC entries before the package rules they override.
 - Position: JLCPCB centres each model on the point. KiCad anchors a through-hole footprint on pin 1, so
   through-hole parts get the centre of their body (the F.Fab outline).
 
@@ -53,6 +54,7 @@ def cpl_rows(cfg: Config, unmatched: set[str] | None = None) -> list[list]:
     board = kicad.load(cfg.pcb)
     org = board.GetDesignSettings().GetAuxOrigin()
     table = [(re.compile(a), d) for a, d in cfg.rotate]
+    lcsc = {r: d["lcsc"] for r, d in parts(cfg.netlist).items()} if cfg.netlist and cfg.netlist.exists() else {}
     rows = []
     for fp in sorted(board.GetFootprints(), key=lambda f: f.GetReference()):
         ref = fp.GetReference()
@@ -66,7 +68,7 @@ def cpl_rows(cfg: Config, unmatched: set[str] | None = None) -> list[list]:
                 ps = [q.GetPosition() for q in fp.Pads() if q.GetNumber() == pad]
                 rows.append([piece, sum(q.x for q in ps) / len(ps), sum(q.y for q in ps) / len(ps), side, rot % 360])
             continue
-        add = next((d for pat, d in table if pat.search(name)), None)
+        add = next((d for pat, d in table if pat.search(name) or (lcsc.get(ref) and pat.search(lcsc[ref]))), None)
         if add is None:
             add = 0
             if unmatched is not None and len({q.GetNumber() for q in fp.Pads()}) > 2:
