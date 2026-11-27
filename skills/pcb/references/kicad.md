@@ -45,3 +45,6 @@ Every entry below cost a board revision or a day. Read before writing pcbnew cod
 - Set the aux origin at the bottom-left of the outline; Gerbers, drill and CPL all use it.
 - A slot milled with a 1.0 mm tool has round ends; draw it with round ends or KiCad's creepage reads wrong.
 - JLCPCB's zero rotation depends on the part's 3D model, so it can differ between parts in the same package. Check every new part in the placement preview, then add it to `[fab] rotate`.
+- Pin 1 decides the angle only when the pads are not in one row. A single-row header or terminal block can face either way with pin 1 in place, and JLCPCB fits it the way its own model faces: `pcbkit fab` lists these, check the body in the preview against the mating plug and set the LCSC number in `[fab] rotate`.
+- Two-pad polarized parts (electrolytics, diodes, LEDs) pass every pad check at 180 degrees off: `pcbkit fab` lists them, check each + or cathode mark in the preview.
+- The quote page can refuse assembly for options that look unrelated (a surface finish with a panel size limit), and the PCBA quantity has to fit the stock of every part: read the BOM page's shortage count at the quantity you will order.
