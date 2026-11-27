@@ -22,7 +22,7 @@ Do the steps in this order. A later step never starts on a guess about an earlie
 2. **Parts.** Pick each part with `jlc_search`: Basic parts first (no loading fee), enough stock for boards x quantity, the newest small package that fits. Save every datasheet with `datasheet_fetch` and read it to the last page. Put each number you will rely on in a table with its page.
 3. **Schematic.** Generate it from a script, run ERC, export the netlist, check pins against a pin table you wrote from the datasheets.
 4. **Calculations.** Derating, power, ripple, voltage domains, relay coils, creepage. One row per check: item, value, limit, verdict, source page. A claim like "enough" or "safe" needs its row. See [references/checks.md](references/checks.md).
-5. **Placement proposal.** Write the zones, signal directions and connector sides first. Make 2 to 4 candidates, including a different overall direction. Measure each with the same script (route length, crossings, gaps) and render them side by side. The person picks; do not route before that.
+5. **Placement proposal.** Write the zones, signal directions and connector sides first. Make 2 to 4 candidates, including a different overall direction. Measure each with the same script (route length, crossings, gaps) and render them side by side. The person picks; do not route before that. Include the current placement as a baseline measured the same way. Report pin or net changes apart from placement effects. Survey what nobody asked about (datasheets, assembler rules, safety) as rule and current-state rows, and state any cost first. Try candidates in a separate script that imports the generator's helpers; never edit the production generator to try one. For tidiness, crop the same region of old and new and look at them side by side.
 6. **Routing.** Route mains, power and sensitive nets by script or hand. Autoroute the rest with `bin/pcbkit freeroute in.dsn out.ses` (Freerouting 2.6.0, pinned and checksummed), then clean up (finish, tidy short jogs, teardrops). See [references/kicad.md](references/kicad.md).
 7. **Gates.** `bin/pcbkit gate`. Every gate is judged by what it found, never by a printed summary. A finding is fixed or waived in `pcb.toml` with a reason; nothing is skipped.
 8. **Order.** `bin/pcbkit fab`, then check the CPL in JLCPCB's placement preview part by part, then a two-model review of the whole package. Present the quote options to the person; ordering is their decision.
@@ -32,7 +32,8 @@ Do the steps in this order. A later step never starts on a guess about an earlie
 
 - Read the datasheet before choosing or swapping a part; a part without a saved datasheet is not chosen.
 - Prefer Basic parts. For a passive value that is not Basic, combine two Basic values in series or parallel.
-- Repeated circuits use one template, placed in a row on shared alignment lines, with named gap values instead of scattered numbers.
+- Repeated circuits use one template, placed in a row on shared alignment lines, with named gap values instead of scattered numbers. Mirror them when the circuit allows. Keep 4 or 5 gap values at most.
+- Space connectors evenly and leave room for plugs and wires; the circuit itself may be dense.
 - Show each stage to the person as a render or a web page, not a description.
 - Run KiCad itself to compare options; do not draw diagrams by hand.
 - Do not guess a number. Compute it and say which tool computed it.
