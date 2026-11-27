@@ -19,7 +19,10 @@ short_mm = 0.5
 out = "fab"
 hand = ["SW4"]                          # soldered by hand: left out of BOM and CPL
 split = { F1 = [["F1A", "1"], ["F1B", "2"]] }   # one footprint, two placed parts, by pad
-rotate = [["^C7484$", 180], ["^SOT-23-5", 270]]   # degrees added per LCSC number or footprint pattern, first match wins; check each in JLCPCB's preview
+rotate = [["^SOT-223", 180]]  # optional: degrees added per LCSC number or footprint pattern. Order: an LCSC entry,
+                              # then the angle from the part's EasyEDA footprint (what JLCPCB's preview uses), then a
+                              # footprint entry. The jlc gate fails where an LCSC entry disagrees with EasyEDA.
+sides = ["Top"]               # sides JLCPCB assembles; the jlc gate fails on a placed part on another side
 
 [jlc]
 quantity = 5                            # boards to assemble; stock must cover parts x quantity

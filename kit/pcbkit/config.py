@@ -36,6 +36,7 @@ class Config:
     hand: list[str] = field(default_factory=list)
     split: dict[str, list[list[str]]] = field(default_factory=dict)
     rotate: list[tuple[str, float]] = field(default_factory=list)
+    sides: list[str] = field(default_factory=lambda: ["Top"])
     quantity: int = 2
     passives_basic: bool = True
     gates: list[str] = field(default_factory=lambda: ["rules", "drc", "parity", "route"])
@@ -72,6 +73,7 @@ def load(path: str | Path = "pcb.toml") -> Config:
         hand=fab.get("hand", []),
         split=fab.get("split", {}),
         rotate=[(p, float(d)) for p, d in fab.get("rotate", [])],
+        sides=fab.get("sides", ["Top"]),
         quantity=int(jlc.get("quantity", 2)),
         passives_basic=bool(jlc.get("passives_basic", True)),
         gates=gate.get("run", ["rules", "drc", "parity", "route"]),

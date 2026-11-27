@@ -108,6 +108,20 @@ class Bom(unittest.TestCase):
         self.assertEqual(missing, [])
 
 
+class EasyEda(unittest.TestCase):
+    def test_offset_from_pin1(self):
+        from pcbkit import easyeda
+        # KiCad SOT-23-5 at 0 degrees: pins 1-3 down the left, pin 1 at the top (y down)
+        k = {"1": (-1.1, -0.95), "2": (-1.1, 0), "3": (-1.1, 0.95), "4": (1.1, 0.95), "5": (1.1, -0.95)}
+        # C7484 in EasyEDA: pins 1-3 down the right, pin 1 at the bottom; the preview needed +180
+        e = {"1": (5.1, 3.7), "2": (5.1, 0), "3": (5.1, -3.7), "4": (-5.1, -3.7), "5": (-5.1, 3.7)}
+        self.assertEqual(easyeda.offset(k, e), 180)
+        self.assertEqual(easyeda.offset(k, k), 0)
+        turned = {n: (y, -x) for n, (x, y) in k.items()}  # a quarter turn
+        self.assertIn(easyeda.offset(k, turned), (90, 270))
+        self.assertIsNone(easyeda.offset({"1": (0, 0), "2": (1, 0)}, {"1": (0, 0), "2": (1, 0)}))
+
+
 @unittest.skipUnless(HAS_KICAD, "needs the KiCad image")
 class Sentinel(unittest.TestCase):
     """The reason the rules gate exists: KiCad must load the good file and drop each broken one."""
