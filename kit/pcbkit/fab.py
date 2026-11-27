@@ -6,7 +6,9 @@ CPL, two differences from KiCad's position file:
 - Rotation: JLCPCB's 3D model of a part has its own zero, which can differ between parts in the same
   package. So there is no built-in table: [fab] rotate lists patterns and degrees counter-clockwise, each one
   checked in the placement preview on cart.jlcpcb.com. A pattern matches the footprint name or the part's
-  LCSC number ("^C7484$"); the first match wins, so list LCSC entries before the package rules they override.
+  LCSC number ("^C7484$"). Order: an entry for the LCSC number, then the angle from the part's EasyEDA
+  footprint to the KiCad one (easyeda.py, what the preview uses), then a footprint-name entry, then 0.
+  The jlc gate fails where an LCSC entry disagrees with the EasyEDA angle (waive it with the reason).
 - Position: JLCPCB centres each model on the point. KiCad anchors a through-hole footprint on pin 1, so
   through-hole parts get the centre of their body (the F.Fab outline).
 
@@ -17,12 +19,13 @@ or board-only drop out. [fab] split turns one footprint into several placed part
 from __future__ import annotations
 
 import csv
+import math
 import re
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
-from . import kicad
+from . import easyeda, kicad
 from .config import Config
 
 def fields(comp) -> dict[str, str]:
@@ -48,14 +51,30 @@ def parts(netlist: Path) -> dict[str, dict]:
     return out
 
 
-def cpl_rows(cfg: Config, unmatched: set[str] | None = None) -> list[list]:
-    """CPL rows. Footprint names that no [fab] rotate entry matched go into `unmatched`."""
+def local_pads(fp) -> dict[str, tuple[float, float]]:
+    """Pad number -> centre in mm in the footprint's own frame (rotation undone, y down)."""
+    p = kicad.pcbnew()
+    o, a = fp.GetPosition(), math.radians(fp.GetOrientationDegrees())
+    out = {}
+    for q in fp.Pads():
+        n = q.GetNumber()
+        if n and n not in out:
+            v = q.GetPosition() - o
+            x, y = p.ToMM(v.x), p.ToMM(v.y)
+            out[n] = (x * math.cos(a) - y * math.sin(a), x * math.sin(a) + y * math.cos(a))
+    return out
+
+
+def cpl_rows(cfg: Config, unmatched: set[str] | None = None, log: list[dict] | None = None) -> list[list]:
+    """CPL rows. Footprints with no [fab] rotate entry and no EasyEDA angle go into `unmatched`; `log` gets one
+    entry per placed part: ref, side, the rotate entry's degrees (None without one) and EasyEDA's angle."""
     p = kicad.pcbnew()
     board = kicad.load(cfg.pcb)
     org = board.GetDesignSettings().GetAuxOrigin()
     table = [(re.compile(a), d) for a, d in cfg.rotate]
     net = parts(cfg.netlist) if cfg.netlist and cfg.netlist.exists() else {}
     lcsc = {r: d["lcsc"] for r, d in net.items()}
+    cache = cfg.root / ".pcbkit" / "easyeda"
     rows = []
     for fp in sorted(board.GetFootprints(), key=lambda f: f.GetReference()):
         ref = fp.GetReference()
@@ -69,8 +88,23 @@ def cpl_rows(cfg: Config, unmatched: set[str] | None = None) -> list[list]:
             for piece, pad in cfg.split[ref]:
                 ps = [q.GetPosition() for q in fp.Pads() if q.GetNumber() == pad]
                 rows.append([piece, sum(q.x for q in ps) / len(ps), sum(q.y for q in ps) / len(ps), side, rot % 360])
+                if log is not None:
+                    log.append({"ref": piece, "side": side, "rule": None, "easyeda": None})
             continue
-        add = next((d for pat, d in table if pat.search(name) or (lcsc.get(ref) and pat.search(lcsc[ref]))), None)
+        code = lcsc.get(ref, "")
+        by_code = next((d for pat, d in table if code and pat.search(code)), None)
+        by_name = next((d for pat, d in table if pat.search(name)), None)
+        easy = None
+        if code and side == "Top" and len({q.GetNumber() for q in fp.Pads()}) > 2:
+            try:
+                ep = easyeda.pads(code, cache)
+                easy = easyeda.offset(local_pads(fp), ep) if ep else None
+            except OSError:
+                easy = None
+        if log is not None:
+            log.append({"ref": ref, "side": side, "rule": by_code, "easyeda": easy, "lcsc": code})
+        # an entry for the LCSC number overrides, then the EasyEDA angle, then a footprint pattern
+        add = next((a for a in (by_code, easy, by_name) if a is not None), None)
         if add is None:
             add = 0
             if unmatched is not None and len({q.GetNumber() for q in fp.Pads()}) > 2:
@@ -81,6 +115,23 @@ def cpl_rows(cfg: Config, unmatched: set[str] | None = None) -> list[list]:
             x, y = fp.GetPosition().x, fp.GetPosition().y
         rows.append([ref, x, y, side, (rot + add) % 360])
     return [[r, f"{p.ToMM(x - org.x):.4f}mm", f"{p.ToMM(org.y - y):.4f}mm", s, f"{a:.0f}"] for r, x, y, s, a in rows]
+
+
+def check(cfg: Config) -> list[str]:
+    """CPL problems that the placement preview would show: parts on a side JLCPCB is not assembling, and
+    LCSC rotate entries that disagree with the part's EasyEDA footprint."""
+    log: list[dict] = []
+    cpl_rows(cfg, log=log)
+    bad = []
+    off = sorted(e["ref"] for e in log if e["side"] not in cfg.sides)
+    if off:
+        bad.append(f"on a side not assembled ([fab] sides = {cfg.sides}): {', '.join(off)}; "
+                   "add the side, or list the parts in [fab] hand")
+    for e in log:
+        if e["rule"] is not None and e["easyeda"] is not None and e["rule"] % 360 != e["easyeda"]:
+            bad.append(f"rotation {e['ref']} ({e['lcsc']}): [fab] rotate adds {e['rule']:.0f}, its EasyEDA "
+                       f"footprint needs {e['easyeda']}")
+    return bad
 
 
 def body_centre(p, fp):
@@ -153,7 +204,7 @@ def run(cfg: Config) -> list[str]:
             w.writerows(rows)
         report.append(f"bom: {len(rows)} lines" + (f", no LCSC number: {'; '.join(missing)}" if missing else ""))
     if unmatched:
-        report.append("rotation 0 added, no [fab] rotate entry (check these in JLCPCB's preview): " + ", ".join(sorted(unmatched)))
+        report.append("rotation 0 added, no [fab] rotate entry and no EasyEDA footprint (check these in JLCPCB's preview): " + ", ".join(sorted(unmatched)))
     if cfg.hand:
         report.append("by hand: " + ", ".join(cfg.hand))
     return report

@@ -5,7 +5,8 @@ Built-in gates:
   drc     DRC with zones refilled: errors and unconnected items fail; warnings are listed
   parity  board against netlist (references, footprints, pad nets, values)
   route   route lint: bend90 and short segments
-  jlc     the BOM against JLCPCB's library (network)
+  jlc     the BOM against JLCPCB's library, and the CPL against the sides assembled and each part's
+          EasyEDA footprint (network)
 Project commands ([[gate.command]]) fail on a non-zero exit.
 
 Advice ([gate] advise, default druid and happy; see advice.py) runs last and never fails the gate: it lists
@@ -60,7 +61,9 @@ def g_route(cfg: Config) -> tuple[list[str], list[str]]:
 
 
 def g_jlc(cfg: Config) -> tuple[list[str], list[str]]:
-    return jlc.check(cfg)
+    bad, notes = jlc.check(cfg)
+    from . import fab
+    return bad + fab.check(cfg), notes
 
 
 BUILTIN = {"rules": g_rules, "drc": g_drc, "parity": g_parity, "route": g_route, "jlc": g_jlc}
