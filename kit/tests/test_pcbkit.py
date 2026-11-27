@@ -95,13 +95,16 @@ class Bom(unittest.TestCase):
             <comp ref="R1"><value>10k</value><footprint>R:R_0603</footprint><fields><field name="LCSC">C25804</field></fields></comp>
             <comp ref="R3"><value>1k</value><footprint>R:R_0603</footprint><property name="dnp"/></comp>
             <comp ref="SW1"><value>SW</value><footprint>S:SW</footprint></comp>
+            <comp ref="SW2"><value>RST</value><footprint>S:TS</footprint><fields><field name="LCSC">C318884</field></fields></comp>
+            <comp ref="SW3"><value>BOOT</value><footprint>S:TS</footprint><fields><field name="LCSC">C318884</field></fields></comp>
             <comp ref="F1"><value>5A</value><footprint>F:Clip</footprint><property name="LCSC" value="C151075"/></comp>
             </components></export>""")
         cfg = config.Config(root=tmp, pcb=tmp / "b.kicad_pcb", netlist=net, hand=["SW1"],
                             split={"F1": [["F1A", "1"], ["F1B", "2"]]})
-        rows, missing = fab.bom_rows(cfg, {"R1", "R2", "R10", "F1A", "F1B"})
+        rows, missing = fab.bom_rows(cfg, {"R1", "R2", "R10", "F1A", "F1B", "SW2", "SW3"})
         self.assertEqual(rows[0], ["5A", "F1A,F1B", "Clip", "C151075"])
         self.assertEqual(rows[1], ["10k", "R1,R2,R10", "R_0603", "C25804"])
+        self.assertEqual(rows[2], ["RST/BOOT", "SW2,SW3", "TS", "C318884"])   # one line per LCSC number
         self.assertEqual(missing, [])
 
 
