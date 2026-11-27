@@ -21539,7 +21539,7 @@ class StdioServerTransport {
 var plugin_default = {
   $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   name: "pcb",
-  version: "0.4.1",
+  version: "0.4.2",
   description: "KiCad PCB flow for agents: a skill for the design order, headless gates in a pinned KiCad container, and JLCPCB part lookup through MCP.",
   author: {
     name: "zyx1121",
